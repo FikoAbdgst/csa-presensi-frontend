@@ -2,21 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 
-export default function UserManagement() {
-    const [users, setUsers] = useState([]);
+export default function AnnouncementsManagement() {
+    const [announcements, setAnnouncements] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
+    const [editingAnnouncement, setEditingAnnouncement] = useState(null);
     const [formData, setFormData] = useState({
         id: '',
-        name: '',
-        email: '',
-        password: '',
-        position: '',
-        division: '',
-        role: 'member'
+        title: '',
+        content: '',
+        priority: 'normal', // normal, important, urgent
+        status: 'active' // active or archived
     });
-
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -27,13 +24,17 @@ export default function UserManagement() {
             return;
         }
 
-        // Load users from localStorage
-        loadUsers();
+        // Load announcements from localStorage
+        loadAnnouncements();
     }, [navigate]);
 
-    const loadUsers = () => {
-        const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        setUsers(storedUsers);
+    const loadAnnouncements = () => {
+        const storedAnnouncements = JSON.parse(localStorage.getItem('announcements') || '[]');
+        // Sort by date (newest first)
+        const sortedAnnouncements = [...storedAnnouncements].sort((a, b) =>
+            new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at)
+        );
+        setAnnouncements(sortedAnnouncements);
         setIsLoading(false);
     };
 
@@ -42,80 +43,99 @@ export default function UserManagement() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
-        setEditingUser(null);
-    };
-
-    // Di fungsi saveUser, tambahkan setIsLoading
-    const saveUser = (e) => {
-        e.preventDefault();
-        setIsLoading(true); // Tambahkan ini
-
-        const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-
-        if (editingUser) {
-            // Update existing user
-            const updatedUsers = storedUsers.map(user =>
-                user.id === formData.id ?
-                    // Keep password if not changed
-                    {
-                        ...formData,
-                        password: formData.password ? formData.password : user.password
-                    } : user
-            );
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-        } else {
-            // Add new user
-            const newUser = {
-                ...formData,
-                createdAt: new Date().toISOString()
-            };
-            localStorage.setItem('users', JSON.stringify([...storedUsers, newUser]));
-        }
-
-        loadUsers();
-        setIsLoading(false); // Tambahkan ini
-        closeModal();
-    };
-    // Memastikan format data username konsisten dengan LoginPage
-    const openModal = (user = null) => {
-        setIsModalOpen(true); // <- INI WAJIB
-        if (user) {
-            setEditingUser(user);
+    const openModal = (announcement = null) => {
+        if (announcement) {
+            // Editing existing announcement
+            setEditingAnnouncement(announcement);
             setFormData({
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                password: '',
-                position: user.position || '',
-                division: user.division || '',
-                role: user.role || 'member'
+                id: announcement.id,
+                title: announcement.title,
+                content: announcement.content,
+                priority: announcement.priority || 'normal',
+                status: announcement.status || 'active'
             });
         } else {
-            setEditingUser(null);
+            // Adding new announcement
+            setEditingAnnouncement(null);
             setFormData({
                 id: Date.now().toString(),
-                name: '',
-                email: '',
-                password: '',
-                position: '',
-                division: '',
-                role: 'member'
+                title: '',
+                content: '',
+                priority: 'normal',
+                status: 'active'
             });
+        }
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingAnnouncement(null);
+    };
+
+    const saveAnnouncement = (e) => {
+        e.preventDefault();
+
+        const storedAnnouncements = JSON.parse(localStorage.getItem('announcements') || '[]');
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (editingAnnouncement) {
+            // Update existing announcement
+            const updatedAnnouncements = storedAnnouncements.map(announcement =>
+                announcement.id === formData.id ?
+                    {
+                        ...formData,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: userData.name || userData.email
+                    } : announcement
+            );
+            localStorage.setItem('announcements', JSON.stringify(updatedAnnouncements));
+        } else {
+            // Add new announcement
+            const newAnnouncement = {
+                ...formData,
+                createdAt: new Date().toISOString(),
+                createdBy: userData.name || userData.email,
+                updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem('announcements', JSON.stringify([...storedAnnouncements, newAnnouncement]));
+        }
+
+        loadAnnouncements();
+        closeModal();
+    };
+
+    const deleteAnnouncement = (announcementId) => {
+        if (window.confirm('Are you sure you want to delete this announcement?')) {
+            const storedAnnouncements = JSON.parse(localStorage.getItem('announcements') || '[]');
+            const updatedAnnouncements = storedAnnouncements.filter(announcement => announcement.id !== announcementId);
+            localStorage.setItem('announcements', JSON.stringify(updatedAnnouncements));
+            loadAnnouncements();
         }
     };
 
+    const toggleStatus = (announcement) => {
+        const storedAnnouncements = JSON.parse(localStorage.getItem('announcements') || '[]');
+        const newStatus = announcement.status === 'active' ? 'archived' : 'active';
 
+        const updatedAnnouncements = storedAnnouncements.map(item =>
+            item.id === announcement.id ? { ...item, status: newStatus } : item
+        );
 
+        localStorage.setItem('announcements', JSON.stringify(updatedAnnouncements));
+        loadAnnouncements();
+    };
 
-    const deleteUser = (userId) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
-            const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            const updatedUsers = storedUsers.filter(user => user.id !== userId);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            loadUsers();
-        }
+    // Format date
+    const formatDate = (dateString) => {
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        return new Date(dateString).toLocaleDateString('id-ID', options);
     };
 
     return (
@@ -124,12 +144,12 @@ export default function UserManagement() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Announcements Management</h1>
                     <button
                         onClick={() => openModal()}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
-                        Add New User
+                        Create Announcement
                     </button>
                 </div>
 
@@ -147,19 +167,19 @@ export default function UserManagement() {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Name
+                                            Title
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Email
+                                            Priority
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Position
+                                            Status
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Division
+                                            Date
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Role
+                                            Created By
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Actions
@@ -167,36 +187,49 @@ export default function UserManagement() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {users.length > 0 ? (
-                                        users.map((user) => (
-                                            <tr key={user.id}>
+                                    {announcements.length > 0 ? (
+                                        announcements.map((announcement) => (
+                                            <tr key={announcement.id}>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-500">{user.email}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-500">{user.position || '-'}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-500">{user.division || '-'}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{announcement.title}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize
-                                                        ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
-                                                        {user.role}
+                                                        ${announcement.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                                            announcement.priority === 'important' ? 'bg-yellow-100 text-yellow-800' :
+                                                                'bg-green-100 text-green-800'}`}>
+                                                        {announcement.priority}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize
+                                                        ${announcement.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                        {announcement.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-500">
+                                                        {formatDate(announcement.createdAt || announcement.created_at)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-500">{announcement.createdBy || '-'}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <button
-                                                        onClick={() => openModal(user)}
+                                                        onClick={() => toggleStatus(announcement)}
+                                                        className={`${announcement.status === 'active' ? 'text-gray-600 hover:text-gray-900' : 'text-blue-600 hover:text-blue-900'} mr-4`}
+                                                    >
+                                                        {announcement.status === 'active' ? 'Archive' : 'Activate'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openModal(announcement)}
                                                         className="text-blue-600 hover:text-blue-900 mr-4"
                                                     >
                                                         Edit
                                                     </button>
                                                     <button
-                                                        onClick={() => deleteUser(user.id)}
+                                                        onClick={() => deleteAnnouncement(announcement.id)}
                                                         className="text-red-600 hover:text-red-900"
                                                     >
                                                         Delete
@@ -206,8 +239,8 @@ export default function UserManagement() {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                                                No users found. Create a new user to get started.
+                                            <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                                                No announcements found. Create a new announcement to get started.
                                             </td>
                                         </tr>
                                     )}
@@ -217,7 +250,7 @@ export default function UserManagement() {
                     </div>
                 )}
 
-                {/* User Modal */}
+                {/* Announcement Modal */}
                 {isModalOpen && (
                     <div className="fixed z-10 inset-0 overflow-y-auto">
                         <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -228,96 +261,73 @@ export default function UserManagement() {
                             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
                             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                <form onSubmit={saveUser}>
+                                <form onSubmit={saveAnnouncement}>
                                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                         <div className="mb-4">
                                             <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                                {editingUser ? 'Edit User' : 'Add New User'}
+                                                {editingAnnouncement ? 'Edit Announcement' : 'Create Announcement'}
                                             </h3>
                                         </div>
                                         <div className="grid grid-cols-1 gap-y-4">
                                             <div>
-                                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                                                    Full Name
+                                                <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+                                                    Title
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    name="name"
-                                                    id="name"
+                                                    name="title"
+                                                    id="title"
                                                     required
-                                                    value={formData.name}
+                                                    value={formData.title}
                                                     onChange={handleInputChange}
                                                     className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                                 />
                                             </div>
                                             <div>
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                                    Email
+                                                <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+                                                    Content
                                                 </label>
-                                                <input
-                                                    type="email"
-                                                    name="email"
-                                                    id="email"
+                                                <textarea
+                                                    name="content"
+                                                    id="content"
                                                     required
-                                                    value={formData.email}
+                                                    rows="5"
+                                                    value={formData.content}
                                                     onChange={handleInputChange}
                                                     className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                                />
+                                                ></textarea>
                                             </div>
                                             <div>
-                                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                                                    {editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
-                                                </label>
-                                                <input
-                                                    type="password"
-                                                    name="password"
-                                                    id="password"
-                                                    required={!editingUser}
-                                                    value={formData.password}
-                                                    onChange={handleInputChange}
-                                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="position" className="block text-sm font-medium text-gray-700">
-                                                    Position
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="position"
-                                                    id="position"
-                                                    value={formData.position}
-                                                    onChange={handleInputChange}
-                                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="division" className="block text-sm font-medium text-gray-700">
-                                                    Division
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="division"
-                                                    id="division"
-                                                    value={formData.division}
-                                                    onChange={handleInputChange}
-                                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                                                    Role
+                                                <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+                                                    Priority
                                                 </label>
                                                 <select
-                                                    name="role"
-                                                    id="role"
+                                                    name="priority"
+                                                    id="priority"
                                                     required
-                                                    value={formData.role}
+                                                    value={formData.priority}
                                                     onChange={handleInputChange}
                                                     className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                                 >
-                                                    <option value="member">Member</option>
-                                                    <option value="admin">Admin</option>
+                                                    <option value="normal">Normal</option>
+                                                    <option value="important">Important</option>
+                                                    <option value="urgent">Urgent</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                                                    Status
+                                                </label>
+                                                <select
+                                                    name="status"
+                                                    id="status"
+                                                    required
+                                                    value={formData.status}
+                                                    onChange={handleInputChange}
+                                                    className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                >
+                                                    <option value="active">Active</option>
+                                                    <option value="archived">Archived</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -327,7 +337,7 @@ export default function UserManagement() {
                                             type="submit"
                                             className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
                                         >
-                                            {editingUser ? 'Update' : 'Create'}
+                                            {editingAnnouncement ? 'Update' : 'Create'}
                                         </button>
                                         <button
                                             type="button"

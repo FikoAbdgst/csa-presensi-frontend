@@ -52,7 +52,7 @@ export default function Navbar() {
         { path: '/admin/dashboard', name: 'Dashboard', icon: <RiDashboardLine /> },
         { path: '/admin/meetings', name: 'Meetings', icon: <FaCalendarCheck /> },
         { path: '/admin/announcements', name: 'Announcements', icon: <FaBullhorn /> },
-        { path: '/admin/members', name: 'Members', icon: <FaUsers /> },
+        { path: '/admin/users', name: 'Members', icon: <FaUsers /> },
     ];
 
     // Determine which links to show based on user role

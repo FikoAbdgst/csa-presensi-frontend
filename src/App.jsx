@@ -3,12 +3,16 @@ import { useEffect, useState } from 'react';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/member/Dashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import AnnouncementsManagement from './pages/admin/AnnouncementsManagement';
+import MeetingsManagement from './pages/admin/MeetingsManagement';
 
 function PrivateRoute({ children, requiredRole = null }) {
-  const token = localStorage.getItem('token');
+  // Check for user instead of token
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (!token) {
+  // If no user data, redirect to login
+  if (!user.email) {
     return <Navigate to="/login" replace />;
   }
 
@@ -27,10 +31,10 @@ export default function App() {
   const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    // Check for user object instead of token
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    setIsAuthenticated(!!token);
+    setIsAuthenticated(!!user.email); // User is authenticated if they have an email
     setUserRole(user.role || null);
   }, []);
 
@@ -68,6 +72,30 @@ export default function App() {
           element={
             <PrivateRoute requiredRole="admin">
               <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <PrivateRoute requiredRole="admin">
+              <UserManagement />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/announcements"
+          element={
+            <PrivateRoute requiredRole="admin">
+              <AnnouncementsManagement />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/meetings"
+          element={
+            <PrivateRoute requiredRole="admin">
+              <MeetingsManagement />
             </PrivateRoute>
           }
         />
